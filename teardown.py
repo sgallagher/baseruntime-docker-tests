@@ -57,10 +57,10 @@ class BaseRuntimeTeardownDocker(Test):
             self.log.info("docker teardown with '%s' succeeded with output:\n%s" %
                 (docker_teardown_cmdline, docker_teardown_output))
 
-        mock_teardown_cmdline = 'mock --scrub=all'
+        mock_teardown_cmdline = ['mock', '-r', self.mockcfg, '--scrub=all']
         try:
             mock_teardown_output = subprocess.check_output(mock_teardown_cmdline,
-                stderr = subprocess.STDOUT, shell = True)
+                stderr = subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             self.error("command '%s' returned exit status %d; output:\n%s" %
                 (e.cmd, e.returncode, e.output))
