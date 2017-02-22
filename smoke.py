@@ -7,6 +7,7 @@ import re
 from avocado import main
 from avocado import Test
 
+
 class BaseRuntimeSmokeTest(Test):
 
     def setUp(self):
@@ -36,33 +37,6 @@ class BaseRuntimeSmokeTest(Test):
                 mockcfg)
         self.log.info("mock root: %s" % mock_root)
         self.mock_root = mock_root
-
-    def testMockInit(self):
-
-        mock_cmdline = ['mock', '-r', self.mockcfg, 'init']
-        try:
-            mock_output = subprocess.check_output(mock_cmdline,
-                stderr = subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            self.error("command '%s' returned exit status %d; output:\n%s" %
-                (' '.join(e.cmd), e.returncode, e.output))
-
-        self.log.info("command  '%s' succeeded with output:\n%s" %
-            (' '.join(mock_cmdline), mock_output))
-
-    def testDockerImport(self):
-
-        import_cmdline = ("tar -C /var/lib/mock/%s/root -c . | docker import - base-runtime-smoke" %
-            self.mock_root)
-        try:
-            import_output = subprocess.check_output(import_cmdline,
-                stderr = subprocess.STDOUT, shell = True)
-        except subprocess.CalledProcessError as e:
-            self.error("command '%s' returned exit status %d; output:\n%s" %
-                (e.cmd, e.returncode, e.output))
-
-        self.log.info("command  '%s' succeeded with output:\n%s" %
-            (import_cmdline, import_output))
 
     def testSmoke(self):
         """
@@ -99,11 +73,6 @@ class BaseRuntimeSmokeTest(Test):
             else:
                 self.error("smoke test command  '%s' succeeded unexpectedly with output:\n%s" %
                     (test, test_output))
-
-    def tearDown(self):
-        """
-        Tear-down
-        """
 
 if __name__ == "__main__":
     main()
