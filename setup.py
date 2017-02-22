@@ -40,6 +40,32 @@ class BaseRuntimeSetupDocker(Test):
 
     def testCreateDockerImage(self):
 
+        # Clean-up any old test artifacts (docker image, mock root) first:
+
+        docker_teardown_cmdline = 'docker rmi base-runtime-smoke'
+        try:
+            docker_teardown_output = subprocess.check_output(docker_teardown_cmdline,
+                stderr = subprocess.STDOUT, shell = True)
+        except subprocess.CalledProcessError as e:
+            if "No such image" not in e.output:
+                self.error("command '%s' returned exit status %d; output:\n%s" %
+                    (e.cmd, e.returncode, e.output))
+            else:
+                self.log.info("No existing docker image named base-runtime-smoke")
+        else:
+            self.log.info("docker teardown with '%s' succeeded with output:\n%s" %
+                (docker_teardown_cmdline, docker_teardown_output))
+
+        mock_teardown_cmdline = 'mock --scrub=all'
+        try:
+            mock_teardown_output = subprocess.check_output(mock_teardown_cmdline,
+                stderr = subprocess.STDOUT, shell = True)
+        except subprocess.CalledProcessError as e:
+            self.error("command '%s' returned exit status %d; output:\n%s" %
+                (e.cmd, e.returncode, e.output))
+        self.log.info("mock teardown with '%s' succeeded with output:\n%s" %
+            (mock_teardown_cmdline, mock_teardown_output))
+
         # Initialize chroot with mock
         mock_cmdline = ['mock', '-r', self.mockcfg, 'init']
         try:
