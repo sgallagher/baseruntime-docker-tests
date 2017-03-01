@@ -27,18 +27,6 @@ class BaseRuntimeTeardownDocker(Test):
         self.log.info("mock configuration file: %s" % mockcfg)
         self.mockcfg = mockcfg
 
-        mock_root = ''
-        with open(mockcfg, 'r') as mock_cfgfile:
-            for line in mock_cfgfile:
-                if re.match("config_opts\s*\[\s*'root'\s*\]", line) is not None:
-                    mock_root = line.split('=')[1].split("'")[1]
-        if len(mock_root) == 0:
-            self.error("mock configuration file %s does not specify mock root" %
-                mockcfg)
-        self.log.info("mock root: %s" % mock_root)
-        self.mock_root = mock_root
-
-
     def testRemoveDockerImage(self):
 
         # We clean-up old test artifacts (docker image, mock root) first:
