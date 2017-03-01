@@ -40,7 +40,7 @@ The test scripts need to be passed the base-runtime mock configuration file, pro
 Run each of the phases in sequence. e.g.,
 
     $ avocado run ./setup.py --mux-inject 'run:mockcfg:resources/base-runtime-mock.cfg'
-    $ avocado run ./smoke.py --mux-inject 'run:mockcfg:resources/base-runtime-mock.cfg'
+    $ avocado run ./smoke.py
     $ avocado run ./teardown.py --mux-inject 'run:mockcfg:resources/base-runtime-mock.cfg'
 
 In the future, additional test scripts can be run between the setup and teardown.
