@@ -62,13 +62,10 @@ class BaseRuntimeSetupDocker(Test):
                 docker_teardown_output = subprocess.check_output(docker_teardown_cmdline,
                     stderr = subprocess.STDOUT, shell = True)
             except subprocess.CalledProcessError as e:
-                if "No such image" not in e.output:
-                    self.error("command '%s' returned exit status %d; output:\n%s" %
-                        (e.cmd, e.returncode, e.output))
-                else:
-                    self.log.info("No existing docker image named base-runtime-smoke")
+                self.error("command '%s' returned exit status %d; output:\n%s" %
+                    (e.cmd, e.returncode, e.output))
             else:
-                self.log.info("docker teardown with '%s' succeeded with output:\n%s" %
+                self.log.info("docker container teardown with '%s' succeeded with output:\n%s" %
                     (docker_teardown_cmdline, docker_teardown_output))
         else:
             self.log.info("no docker containers are using image base-runtime-smoke\n")
