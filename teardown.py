@@ -31,7 +31,13 @@ class BaseRuntimeTeardownDocker(Test):
 
     def testRemoveDockerImage(self):
 
-        cleanup.cleanup_docker_and_mock(self.mockcfg)
+        # Clean-up old test artifacts (docker containers, image, mock root)
+        try:
+            cleanup.cleanup_docker_and_mock(self.mockcfg)
+        except:
+            self.error("artifact cleanup failed")
+        else:
+            self.log.info("artifact cleanup successful")
 
 if __name__ == "__main__":
     main()

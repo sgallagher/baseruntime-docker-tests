@@ -43,7 +43,12 @@ class BaseRuntimeSetupDocker(Test):
     def testCreateDockerImage(self):
 
         # Clean-up any old test artifacts (docker containers, image, mock root) first:
-        cleanup.cleanup_docker_and_mock(self.mockcfg)
+        try:
+            cleanup.cleanup_docker_and_mock(self.mockcfg)
+        except:
+            self.error("artifact cleanup failed")
+        else:
+            self.log.info("artifact cleanup successful")
 
         # Initialize chroot with mock
         mock_cmdline = ['mock', '-r', self.mockcfg, 'init']
