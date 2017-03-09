@@ -16,8 +16,8 @@ class BaseRuntimeRunCmd(object):
     def _run_cmd(self, cmd):
         try:
             test_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as e:
-            return e.returncode, e.output
+        except subprocess.CalledProcessError as err:
+            return err.returncode, err.output
         return 0, test_output
 
 
@@ -32,8 +32,6 @@ class BaseRuntimeRunCmd(object):
             #Want to execute command and leave container running
             if not self.docker_container:
                 self.docker_container = self._run_br_container_background()
-                if not self.docker_container:
-                    return 1, "FAIL: run_docker_cmd() - Could not start container"
             cmdline = 'docker exec %s bash -c "%s"' % (self.docker_container, cmd)
 
         test_ret, test_output = self._run_cmd(cmdline)
@@ -53,16 +51,16 @@ class BaseRuntimeRunCmd(object):
         cmdline = "docker run -d base-runtime-smoke bash -c 'tail -f /dev/null'"
         test_ret, test_output = self._run_cmd(cmdline)
         if test_ret != 0:
-            return test_ret, test_output
+            raise AssertionError('Could not start container')
 
         test_output = test_output.strip()
         if not test_output:
-            return None
+            raise AssertionError('Could not get container ID')
 
         container_ids = test_output.split('\n')
         if len(container_ids) > 1:
-            print "FAIL: _run_br_container_background() - Found more containers ID then expected"
-            return None
+            raise AssertionError('Found more containers ID then expected')
+
         return container_ids[0]
 
     def _rm_br_container(self, container_id):
@@ -71,10 +69,14 @@ class BaseRuntimeRunCmd(object):
         cmdline = "docker stop %s" % container_id
         test_ret, test_output = self._run_cmd(cmdline)
         if test_ret != 0:
-            return test_ret
+            raise AssertionError('Could not stop container %s' % container_id)
 
         cmdline = "docker rm %s" % container_id
         test_ret, test_output = self._run_cmd(cmdline)
+        if test_ret != 0:
+            raise AssertionError('Could not remove container %s' % container_id)
+
+        print "INFO: Removed container %s" % container_id
         return test_ret
 
     #Probably not the best way, but I could not find away to guarantee container will be removed
@@ -83,6 +85,22 @@ class BaseRuntimeRunCmd(object):
             self._rm_br_container(self.docker_container)
 
 class BaseRuntimeSmokeTest(Test):
+
+    def _check_cmd_result(self, cmd, return_code, cmd_output, expect_pass=True):
+        """
+        Check based on return code if command passed or failed as expected
+        """
+        if return_code == 0 and expect_pass:
+            self.log.info("command '%s' succeeded with output:\n%s" %
+                          (cmd, cmd_output))
+            return True
+        elif return_code != 0 and not expect_pass:
+            self.log.info("command '%s' failed as expected with output:\n%s" %
+                          (cmd, cmd_output))
+            return True
+        self.error("command '%s' returned unexpected exit status %d; output:\n%s" %
+                       (cmd, return_code, cmd_output))
+        return False
 
     def testSmoke(self):
         """
@@ -100,47 +118,24 @@ class BaseRuntimeSmokeTest(Test):
             "exit 1"]
 
         run_cmd = BaseRuntimeRunCmd()
-        cnt = 0
         for test in smoke_pass:
-            cnt += 1
-            rm_container = False
-            if cnt == len(smoke_pass):
-                rm_container = True
-            test_ret, test_output = run_cmd.run_docker_cmd(test, rm_container=rm_container)
-            if test_ret == 0:
-                self.log.info("smoke test command '%s' succeeded with output:\n%s" %
-                              (test, test_output))
-            else:
-                self.error("command '%s' returned unexpected exit status %d; output:\n%s" %
-                           (test, test_ret, test_output))
+            try:
+                test_ret, test_output = run_cmd.run_docker_cmd(test, rm_container=False)
+            except AssertionError as err:
+                self.error(err.message)
+            except:
+                self.error("An unexpected error occurred")
+            self._check_cmd_result(test, test_ret, test_output)
 
-
+        #relying on __del__ from BaseRuntimeRunCmd to remove container
         for test in smoke_fail:
-            test_ret, test_output = run_cmd.run_docker_cmd(test)
-            if test_ret == 0:
-                self.error("smoke test command '%s' succeeded unexpectly with output:\n%s" %
-                           (test, test_output))
-            else:
-                self.log.info("command '%s' returned exit status %d; output:\n%s" %
-                              (test, test_ret, test_output))
-
-
-    def _check_cmd_result(self, cmd, return_code, cmd_output, expect_pass=True):
-        """
-        Check based on return code if command passed or failed as expected
-        """
-        if return_code == 0 and expect_pass:
-            self.log.info("command '%s' succeeded with output:\n%s" %
-                          (cmd, cmd_output))
-            return True
-        elif return_code != 0 and not expect_pass:
-            self.log.info("command '%s' failed as expected with output:\n%s" %
-                          (cmd, cmd_output))
-            return True
-        self.log.error("command '%s' returned unexpected exit status %d; output:\n%s" %
-                       (cmd, return_code, cmd_output))
-        return False
-
+            try:
+                test_ret, test_output = run_cmd.run_docker_cmd(test, rm_container=False)
+            except AssertionError as err:
+                self.error(err.message)
+            except:
+                self.error("An unexpected error occurred")
+            self._check_cmd_result(test, test_ret, test_output, expect_pass=False)
 
 
     def testUserManipulation(self):
@@ -148,70 +143,46 @@ class BaseRuntimeSmokeTest(Test):
         Check if can add, remove and modify user
         """
 
-        error = False
-
         run_cmd = BaseRuntimeRunCmd()
         #We want to run multiple commands using same docker container
+        new_user = "usertest"
+        pass_cmds = []
         #Create new user
-        cmd = "adduser usertest"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
-
+        pass_cmds.append("adduser %s" % new_user)
         #Make sure user is created
-        cmd = "cat /etc/passwd | grep usertest"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
-
-        cmd = "ls /home/usertest"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
-
+        pass_cmds.append("cat /etc/passwd | grep %s" % new_user)
+        pass_cmds.append("ls /home/%s" % new_user)
         #set user password
-        cmd = "usermod --password testpassword usertest"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
-
-        #cmd = "echo test | passwd usertest --stdin"
-        #test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        #if not self._check_cmd_result(cmd, test_ret, test_output):
-        #    error = True
-
+        pass_cmds.append("usermod --password testpassword %s" % new_user)
         #Test new user functionality
-        cmd = "su - usertest && touch ~/testfile.txt"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
-
-        cmd = "su - usertest && ls -allh ~/testfile.txt"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
-
-
+        pass_cmds.append("su - %s -c 'touch ~/testfile.txt'" % new_user)
+        #Make sure the file was created by the correct user
+        pass_cmds.append("ls -allh /home/%s/testfile.txt | grep '%s %s'" %
+                         (new_user, new_user, new_user))
         #Remove user
-        cmd = "userdel -r usertest"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output):
-            error = True
+        pass_cmds.append("userdel -r %s" % new_user)
+        for cmd in pass_cmds:
+            try:
+                test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
+            except AssertionError as err:
+                self.error(err.message)
+            except:
+                self.error("An unexpected error occurred")
+            self._check_cmd_result(cmd, test_ret, test_output)
 
+        fail_cmds = []
         #Make sure user is removed
-        cmd = "ls /home/usertest"
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
-        if not self._check_cmd_result(cmd, test_ret, test_output, expect_pass=False):
-            error = True
-
-        cmd = "cat /etc/passwd | grep usertest"
-        #container can be removed now
-        test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=True)
-        if not self._check_cmd_result(cmd, test_ret, test_output, expect_pass=False):
-            error = True
-
-        if error:
-            self.error("UserManipulation test failed")
+        fail_cmds.append("ls /home/%s" % new_user)
+        fail_cmds.append("cat /etc/passwd | grep usertest")
+        #relying on __del__ from BaseRuntimeRunCmd to remove container
+        for cmd in fail_cmds:
+            try:
+                test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
+            except AssertionError as err:
+                self.error(err.message)
+            except:
+                self.error("An unexpected error occurred")
+            self._check_cmd_result(cmd, test_ret, test_output, expect_pass=False)
 
 
 if __name__ == "__main__":
