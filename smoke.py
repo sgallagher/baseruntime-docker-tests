@@ -21,17 +21,17 @@ class BaseRuntimeRunCmd(object):
         return 0, test_output
 
 
-    def run_docker_cmd(self, cmd, rm_container=True):
+    def run_docker_cmd(self, cmd, img_name, rm_container=True):
         """
         Execute a docker command. By default it will create a new container
         Once the command finishes the container is removed
         """
-        cmdline = 'docker run --rm base-runtime-smoke bash -c "%s"' % cmd
+        cmdline = 'docker run --rm %s bash -c "%s"' % (img_name, cmd)
 
         if self.docker_container or not rm_container:
             #Want to execute command and leave container running
             if not self.docker_container:
-                self.docker_container = self._run_br_container_background()
+                self.docker_container = self._run_br_container_background(img_name)
             cmdline = 'docker exec %s bash -c "%s"' % (self.docker_container, cmd)
 
         test_ret, test_output = self._run_cmd(cmdline)
@@ -42,13 +42,13 @@ class BaseRuntimeRunCmd(object):
 
         return test_ret, test_output
 
-    def _run_br_container_background(self):
+    def _run_br_container_background(self, img_name):
         """
         Start new container and keep it running on background
         Return the new container ID
         """
         #Hack to leave container running: http://stackoverflow.com/questions/30209776/docker-container-will-automatically-stop-after-docker-run-d
-        cmdline = "docker run -d base-runtime-smoke bash -c 'tail -f /dev/null'"
+        cmdline = "docker run -d %s bash -c 'tail -f /dev/null'" % img_name
         test_ret, test_output = self._run_cmd(cmdline)
         if test_ret != 0:
             raise AssertionError('Could not start container')
@@ -86,6 +86,10 @@ class BaseRuntimeRunCmd(object):
 
 class BaseRuntimeSmokeTest(Test):
 
+    def setUp(self):
+        self.br_image_name = 'base-runtime-smoke'
+        self.log.info("base runtime image name: %s" % self.br_image_name)
+
     def _check_cmd_result(self, cmd, return_code, cmd_output, expect_pass=True):
         """
         Check based on return code if command passed or failed as expected
@@ -120,7 +124,8 @@ class BaseRuntimeSmokeTest(Test):
         run_cmd = BaseRuntimeRunCmd()
         for test in smoke_pass:
             try:
-                test_ret, test_output = run_cmd.run_docker_cmd(test, rm_container=False)
+                test_ret, test_output = run_cmd.run_docker_cmd(
+                    test, self.br_image_name, rm_container=False)
             except AssertionError as err:
                 self.error(err.message)
             except:
@@ -130,7 +135,8 @@ class BaseRuntimeSmokeTest(Test):
         #relying on __del__ from BaseRuntimeRunCmd to remove container
         for test in smoke_fail:
             try:
-                test_ret, test_output = run_cmd.run_docker_cmd(test, rm_container=False)
+                test_ret, test_output = run_cmd.run_docker_cmd(
+                    test, self.br_image_name, rm_container=False)
             except AssertionError as err:
                 self.error(err.message)
             except:
@@ -163,7 +169,8 @@ class BaseRuntimeSmokeTest(Test):
         pass_cmds.append("userdel -r %s" % new_user)
         for cmd in pass_cmds:
             try:
-                test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
+                test_ret, test_output = run_cmd.run_docker_cmd(
+                    cmd, self.br_image_name, rm_container=False)
             except AssertionError as err:
                 self.error(err.message)
             except:
@@ -177,7 +184,8 @@ class BaseRuntimeSmokeTest(Test):
         #relying on __del__ from BaseRuntimeRunCmd to remove container
         for cmd in fail_cmds:
             try:
-                test_ret, test_output = run_cmd.run_docker_cmd(cmd, rm_container=False)
+                test_ret, test_output = run_cmd.run_docker_cmd(
+                    cmd, self.br_image_name, rm_container=False)
             except AssertionError as err:
                 self.error(err.message)
             except:

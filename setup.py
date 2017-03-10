@@ -40,11 +40,14 @@ class BaseRuntimeSetupDocker(Test):
         self.log.info("mock root: %s" % mock_root)
         self.mock_root = mock_root
 
+        self.br_image_name = 'base-runtime-smoke'
+        self.log.info("base runtime image name: %s" % self.br_image_name)
+
     def testCreateDockerImage(self):
 
         # Clean-up any old test artifacts (docker containers, image, mock root) first:
         try:
-            cleanup.cleanup_docker_and_mock(self.mockcfg)
+            cleanup.cleanup_docker_and_mock(self.mockcfg, self.br_image_name)
         except:
             self.error("artifact cleanup failed")
         else:
@@ -63,8 +66,8 @@ class BaseRuntimeSetupDocker(Test):
             (' '.join(mock_cmdline), mock_output))
 
         # Import it as a docker image
-        import_cmdline = ("tar -C /var/lib/mock/%s/root -c . | docker import - base-runtime-smoke" %
-            self.mock_root)
+        import_cmdline = ("tar -C /var/lib/mock/%s/root -c . | docker import - %s" %
+            (self.mock_root, self.br_image_name))
         try:
             import_output = subprocess.check_output(import_cmdline,
                 stderr = subprocess.STDOUT, shell = True)

@@ -29,11 +29,14 @@ class BaseRuntimeTeardownDocker(Test):
         self.log.info("mock configuration file: %s" % mockcfg)
         self.mockcfg = mockcfg
 
+        self.br_image_name = 'base-runtime-smoke'
+        self.log.info("base runtime image name: %s" % self.br_image_name)
+
     def testRemoveDockerImage(self):
 
         # Clean-up old test artifacts (docker containers, image, mock root)
         try:
-            cleanup.cleanup_docker_and_mock(self.mockcfg)
+            cleanup.cleanup_docker_and_mock(self.mockcfg, self.br_image_name)
         except:
             self.error("artifact cleanup failed")
         else:
