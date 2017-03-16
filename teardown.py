@@ -8,29 +8,15 @@ from avocado import main
 from avocado import Test
 
 import cleanup
+import brtconfig
 
 
 class BaseRuntimeTeardownDocker(Test):
 
     def setUp(self):
 
-        mockcfg = self.params.get('mockcfg')
-        if mockcfg is None:
-            self.error("mock configuration file for building docker image must be supplied")
-
-        if not mockcfg.endswith(".cfg"):
-            self.error("mock configuration file %s must have the extension '.cfg'" %
-                mockcfg)
-
-        mockcfg = str(mockcfg)
-        if not os.path.isfile(mockcfg):
-            self.error("mock configuration file %s does not exist" %
-                mockcfg)
-        self.log.info("mock configuration file: %s" % mockcfg)
-        self.mockcfg = mockcfg
-
-        self.br_image_name = 'base-runtime-smoke'
-        self.log.info("base runtime image name: %s" % self.br_image_name)
+        self.mockcfg = brtconfig.get_mockcfg(self)
+        self.br_image_name = brtconfig.get_docker_image_name(self)
 
     def testRemoveDockerImage(self):
 

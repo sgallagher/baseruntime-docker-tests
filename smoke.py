@@ -3,9 +3,16 @@
 import os
 import subprocess
 import re
+import shutil
+import stat
+import tarfile
+import tempfile
 
 from avocado import main
 from avocado import Test
+
+import brtconfig
+
 
 class BaseRuntimeRunCmd(object):
     """
@@ -87,8 +94,10 @@ class BaseRuntimeRunCmd(object):
 class BaseRuntimeSmokeTest(Test):
 
     def setUp(self):
-        self.br_image_name = 'base-runtime-smoke'
-        self.log.info("base runtime image name: %s" % self.br_image_name)
+
+        self.compiler_resource_dir = brtconfig.get_compiler_test_dir(self)
+        self.br_image_name = brtconfig.get_docker_image_name(self)
+        self.compiler_test_dir = None
 
     def _check_cmd_result(self, cmd, return_code, cmd_output, expect_pass=True):
         """
@@ -192,6 +201,92 @@ class BaseRuntimeSmokeTest(Test):
                 self.error("An unexpected error occurred")
             self._check_cmd_result(cmd, test_ret, test_output, expect_pass=False)
 
+
+    def _prepare_compiler_test_directory(self):
+
+        # create a temporary directory
+        tmpdir = tempfile.mkdtemp()
+
+        self.log.info("Compiler test temporary directory is %s" % tmpdir)
+
+        # Copy the `hello.sh` script from this resource directory into the
+        # temporary directory
+        src = os.path.join(self.compiler_resource_dir, "hello.sh")
+        dest = os.path.join(tmpdir, "hello.sh")
+        try:
+            shutil.copy(src, dest)
+        except shutil.Error as e:
+            self.log.info('Error: %s' % e)
+        except IOError as e:
+            self.log.info('Error: %s' % e.strerror)
+
+        # make sure destination script is executable
+        st = os.stat(dest)
+        os.chmod(dest, st.st_mode | stat.S_IEXEC)
+
+        # Place a gzipped tarball of `hello.c` and `Makefile` from the
+        # resource directory into the temporary directory with the name
+        # `hello.tgz`.
+        dest = os.path.join(tmpdir, "hello.tgz")
+        tar = tarfile.open(dest, "w:gz")
+        for f in ["hello.c", "Makefile"]:
+            src = os.path.join(self.compiler_resource_dir, f)
+            tar.add(src, arcname=f)
+        tar.close()
+
+        self.compiler_test_dir = tmpdir
+
+    def _cleanup_compiler_test_directory(self):
+
+        # clean up the temporary directory
+        if self.compiler_test_dir:
+            self.log.info("cleaning up compiler test directory")
+            shutil.rmtree(self.compiler_test_dir, ignore_errors=True)
+
+    def testCompiler(self):
+        """
+        Run a basic C compiler test on our docker image.
+
+        This actually tests the integration of several things, including the
+        ability to install packages, extract a gzipped tarball, run make to
+        compile a very simple C program, and run the compiled executable.
+        """
+
+        self._prepare_compiler_test_directory()
+
+        # mount the prepared compiler test directory in the docker container
+        # as /mnt, then run the "hello.sh" test script within
+        cmdline = 'docker run -v "%s:/mnt:z" --rm %s bash -c "/mnt/hello.sh"' % (
+            self.compiler_test_dir, self.br_image_name)
+        try:
+            process = subprocess.Popen(cmdline, shell=True,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except:
+            self.error("An unexpected error occurred while running '%s'" % cmdline)
+        test_stdout, test_stderr = process.communicate()
+
+        if process.returncode:
+            self.error("command '%s' returned exit status %d; output:\n%s\nstderr:\n%s" %
+                       (cmdline, process.returncode, test_stdout, test_stderr))
+
+        self.log.info("command '%s' succeeded with output:\n%s\nstderr:\n%s" %
+                      (cmdline, test_stdout, test_stderr))
+
+        # make sure we get exactly what we expect on stdout
+        # (all other output from commands in the script were sent to stderr)
+        expected_stdout = 'Hello, world!\n'
+        self.log.info("checking that compiler test returned expected output: %s" %
+                      repr(expected_stdout))
+        if test_stdout != expected_stdout:
+            self.error("compiler test did not return unexpected output: %s" %
+                       repr(test_stdout))
+
+    def tearDown(self):
+        """
+        Tear-down
+        """
+
+        self._cleanup_compiler_test_directory()
 
 if __name__ == "__main__":
     main()

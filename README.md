@@ -3,7 +3,7 @@ CI Tests for the Base Runtime docker image
 
 How to run a test using the [avocado testing framework](http://avocado-framework.github.io/):
 
-    $ avocado run $TEST.py --mux-inject 'run:$TESTPARAM:$VALUE'
+    $ avocado run $TEST.py [ --mux-inject 'run:$TESTPARAM:$VALUE' ... ]
 
 ## Setup
 
@@ -35,12 +35,28 @@ created/removed. Thus, these CI tests have been split up into three phases:
 
 ## Running these tests
 
-The test scripts need to be passed the base-runtime mock configuration file, provided on the command line via the [avocado's parameter passing mechanism](http://avocado-framework.readthedocs.io/en/latest/WritingTests.html#accessing-test-parameters).
-
 Run each of the phases in sequence. e.g.,
 
-    $ avocado run ./setup.py --mux-inject 'run:mockcfg:resources/base-runtime-mock.cfg'
+    $ avocado run ./setup.py
     $ avocado run ./smoke.py
-    $ avocado run ./teardown.py --mux-inject 'run:mockcfg:resources/base-runtime-mock.cfg'
+    $ avocado run ./teardown.py
 
 In the future, additional test scripts can be run between the setup and teardown.
+
+## Test script configuration overrides
+
+Optional test script configuration overrides can provided on the command line using [avocado's parameter passing mechanism](http://avocado-framework.readthedocs.io/en/latest/WritingTests.html#accessing-test-parameters) in the following manner:
+
+    $ avocado run $TEST.py [ --mux-inject 'run:$TESTPARAM:$VALUE' ... ]
+
+### mockcfg - path to mock configuration file
+
+The setup.py and teardown.py scripts need to read a base-runtime mock configuration file. The default path is 'resources/base-runtime-mock.cfg' relative to the directory where the test script resides. This path can be overridden with the 'mockcfg' parameter.
+
+### compiler-test-dir - path to compiler test resource directory
+
+The smoke.py script needs to access a base-runtime compiler test resource directory. The default path is 'resources/hello-world' relative to the directory where the test script resides. This path can be overridden with the 'compiler-test-dir' parameter.
+
+### docker-image-name - path to mock configuration file
+
+All of the scripts need to know the name to use for the base-runtime docker image. The default name is 'base-runtime-smoke'. This name can be overridden with the 'docker-image-name' parameter.

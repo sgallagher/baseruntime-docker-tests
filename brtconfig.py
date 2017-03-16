@@ -1,0 +1,76 @@
+"""
+get configuration parameters for base runtime smoke testing
+"""
+
+import os
+import logging
+
+
+def get_mockcfg(self):
+    """
+    Get the path to the base runtime mock configuration file
+
+    This is provided by the avocado 'mockcfg' parameter if supplied,
+    otherwise it is set to "resources/base-runtime-mock.cfg" relative to
+    the test script directory.
+    """
+
+    script_dir = os.path.abspath(os.path.dirname(__file__))
+    self.log.info("running script from directory: %s" % script_dir)
+
+    mockcfg = self.params.get('mockcfg', default=os.path.join(
+        script_dir, "resources", "base-runtime-mock.cfg"))
+    mockcfg = str(mockcfg)
+
+    if not mockcfg.endswith(".cfg"):
+        self.error("mock configuration file %s must have the extension '.cfg'" %
+                   mockcfg)
+
+    if not os.path.isfile(mockcfg):
+        self.error("mock configuration file %s does not exist" %
+                   mockcfg)
+
+    self.log.info("mock configuration file: %s" % mockcfg)
+
+    return mockcfg
+
+
+def get_compiler_test_dir(self):
+    """
+    Get the path to the base runtime compiler test resource directory
+
+    This is provided by the avocado 'compiler-test-dir' parameter if supplied,
+    otherwise it is set to "resources/hello-world" relative to
+    the test script directory.
+    """
+
+    script_dir = os.path.abspath(os.path.dirname(__file__))
+    self.log.info("running script from directory: %s" % script_dir)
+
+    compdir = self.params.get(
+        'compiler-test-dir', default=os.path.join(script_dir, "resources", "hello-world"))
+    compdir = str(compdir)
+
+    if not os.path.isdir(compdir):
+        self.error("Compiler test resource directory %s does not exist" % compdir)
+
+    self.log.info("Compiler test resource directory: %s" % compdir)
+
+    return compdir
+
+
+def get_docker_image_name(self):
+    """
+    Get the name to use for the base runtime docker image
+
+    This is provided by the avocado 'docker-image-name' parameter if supplied,
+    otherwise it is set to "base-runtime-smoke".
+    """
+
+    image_name = self.params.get(
+        'docker-image-name', default='base-runtime-smoke')
+    image_name = str(image_name)
+
+    self.log.info("base runtime image name: %s" % image_name)
+
+    return image_name
