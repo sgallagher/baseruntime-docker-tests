@@ -29,7 +29,7 @@ def cleanup_docker_and_mock(mockcfg, img_name):
         containers = re.sub('[\r\n]+', ' ', containerlist)
         log.info("docker containers using image %s need to be removed: %s\n" %
             (img_name, containers));
-        docker_teardown_cmdline = 'docker rm %s' % containers
+        docker_teardown_cmdline = 'docker rm -f %s' % containers
         try:
             docker_teardown_output = subprocess.check_output(docker_teardown_cmdline,
                 stderr = subprocess.STDOUT, shell = True)

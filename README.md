@@ -14,6 +14,10 @@ Install prerequisite RPMs if necessary:
 * python2-modulemd - Module metadata manipulation library
 * docker - Automates deployment of containerized applications
 
+Modularity test framework
+* dnf copr enable phracek/Modularity-testing-framework
+* dnf install -y modularity-testing-framework
+
 ## Docker setup
 
 Configure docker to run as your (non-root!) userid:
