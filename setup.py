@@ -110,9 +110,29 @@ class BaseRuntimeSetupDocker(Test):
         # Configure mock chroot for microdnf so it carrys into the docker image
         self._configure_mock_microdnf()
 
+        # check if "sudo" allows us to tar up the chroot without a password
+        # Note: this must be configured in "sudoers" to work!
+        tar_cmd = "tar -C /var/lib/mock/%s/root -c ." % self.mock_root
+        try:
+            cmd_output = subprocess.check_output(
+                "sudo -n %s >/dev/null" % tar_cmd,
+                stderr=subprocess.STDOUT, shell=True)
+        except subprocess.CalledProcessError as e:
+            # no luck using "sudo", warn and proceed as ordinary user without
+            # it
+            self.log.info("command '%s' returned exit status %d; output:\n%s" %
+                          (e.cmd, e.returncode, e.output))
+            self.log.warning("NO SUDO RIGHTS TO RUN COMMAND '%s' AS ROOT" %
+                             tar_cmd)
+            self.log.warning("GENERATED DOCKER IMAGE '%s' MAY BE INCOMPLETE!" %
+                             self.br_image_name)
+        else:
+            # "sudo" works, so use it
+            tar_cmd = "sudo -n " + tar_cmd
+
         # Import mock chroot as a docker image
-        self._run_command("tar -C /var/lib/mock/%s/root -c . | docker import - %s" %
-                          (self.mock_root, self.br_image_name))
+        self._run_command("%s | docker import - %s" %
+                          (tar_cmd, self.br_image_name))
 
 if __name__ == "__main__":
     main()

@@ -7,26 +7,50 @@ How to run a test using the [avocado testing framework](http://avocado-framework
 
 ## Setup
 
+### Package setup
+
 Install prerequisite RPMs if necessary:
 
-* python2-aexpect - dependency for python-avocado
-* python2-avocado - avocado testing framework
-* python2-modulemd - Module metadata manipulation library
-* docker - Automates deployment of containerized applications
+* mock - Builds packages inside chroots
+* python2-configparser - Configuration file parser
 
-Modularity test framework
-* dnf copr enable phracek/Modularity-testing-framework
-* dnf install -y modularity-testing-framework
+        $ sudo dnf install mock python2-configparser
 
-## Docker setup
+* modularity-testing-framework - Modularity test framework
 
-Configure docker to run as your (non-root!) userid:
+        $ sudo dnf copr enable phracek/Modularity-testing-framework
+        $ sudo dnf install modularity-testing-framework
 
-https://docs.docker.com/engine/installation/linux/linux-postinstall/#manage-docker-as-a-non-root-user
+### Mock setup
 
-Configure docker to start automatically (and start it):
+Add your user to the mock group:
 
-https://docs.docker.com/engine/installation/linux/linux-postinstall/#manage-docker-as-a-non-root-user#configure-docker-to-start-on-boot
+    $ sudo usermod -aG mock $USER
+
+### Docker setup
+
+[Configure docker to run as your (non-root!) userid](https://docs.docker.com/engine/installation/linux/linux-postinstall/#manage-docker-as-a-non-root-user):
+
+    $ sudo groupadd docker
+    $ sudo usermod -aG docker $USER
+
+[Configure docker to start automatically (and start it)](https://docs.docker.com/engine/installation/linux/linux-postinstall/#manage-docker-as-a-non-root-user#configure-docker-to-start-on-boot):
+
+    $ sudo systemctl enable docker
+    $ sudo systemctl start docker
+
+### Group membership setup
+
+Log out and log back in so that your group membership is re-evaluated.
+
+### Sudo setup
+
+Add the following lines to /etc/sudoers or put them into a new file such as /etc/sudoers.d/mock-tar-chroot:
+
+    %mock ALL=(root) NOPASSWD: /usr/bin/tar -C /var/lib/mock/*/root -c .,\
+                               !/usr/bin/tar -C /var/lib/mock/* */root -c .
+
+The above configuration allows members of the 'mock' group to generate a complete docker image. An image can still be created without performing this step, but it will be incomplete and the test setup phase will finish with a warning.
 
 ## Background
 
