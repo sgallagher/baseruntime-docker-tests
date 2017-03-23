@@ -104,6 +104,84 @@ class BaseRuntimeSmokeTest(module_framework.AvocadoTest):
             cmd_output = cmd_result.stdout + cmd_result.stderr
             self._check_cmd_result(cmd, cmd_result.exit_status, cmd_output, expect_pass=False)
 
+    def test_glibc_i18n(self):
+        """
+        Test glibc support to internationalization
+        """
+
+        lang_default = {
+            #cmd : cmd_output
+            "ls /invalid_path" : "ls: cannot access '/invalid_path': No such file or directory",
+            "cp invalid_file tmp" : "cp: cannot stat 'invalid_file': No such file or directory",
+            "date -u -d \"2017-03-31\"" : "Fri Mar 31 00:00:00 UTC 2017",
+            "touch file; yes | rm -i file" : "rm: remove regular empty file 'file'?",
+            "numfmt --grouping 1234567890.98" : "1234567890.98"
+        }
+
+        lang_english = {
+            "LC_ALL=en_US ls /invalid_path" : "ls: cannot access '/invalid_path': No such file or directory",
+            "LC_ALL=en_US cp invalid_file tmp" : "cp: cannot stat 'invalid_file': No such file or directory",
+            "LC_ALL=en_US date -u -d \"2017-03-31\"" : "Fri Mar 31 00:00:00 UTC 2017",
+            "touch file; yes | LC_ALL=en_US rm -i file" : "rm: remove regular empty file 'file'?",
+            "LC_ALL=en_US numfmt --grouping 1234567890.98" : "1,234,567,890.98"
+        }
+
+        lang_spanish = {
+            "LC_ALL=es_ES ls /invalid_path" : "ls: no se puede acceder a '/invalid_path': No existe el fichero o el directorio",
+            "LC_ALL=es_ES cp invalid_file tmp" : "cp: no se puede efectuar `stat' sobre 'invalid_file': No existe el fichero o el directorio",
+            "LC_ALL=es_ES date -u -d \"2017-03-31\"" : "vie mar 31 00:00:00 UTC 2017",
+            "touch file; yes | LC_ALL=es_ES rm -i file" : "borrar el fichero regular",
+            "LC_ALL=es_ES numfmt --grouping 1234567890,98" : "1.234.567.890,98"
+        }
+
+        langs = {}
+        langs["default"] = {
+            "pkg" : "glibc-minimal-langpack",
+            "cmds" : lang_default
+        }
+
+        langs["english"] = {
+            "pkg" : "glibc-langpack-en",
+            "cmds" : lang_english
+        }
+
+        langs["spanish"] = {
+            "pkg" : "glibc-langpack-es",
+            "cmds" : lang_spanish
+        }
+
+
+        for i18n in langs.keys():
+            lang = langs[i18n]
+            self.log.info("Testing %s" % lang["pkg"])
+
+            install_package = True
+            # glibc-minimal-langpack is installed by default
+            if lang["pkg"] == "glibc-minimal-langpack":
+                install_package = False
+
+            if install_package:
+                try:
+                    self.run("microdnf install %s" % lang["pkg"])
+                except:
+                    self.error("Could not install %s" % lang["pkg"])
+
+            for cmd in lang["cmds"].keys():
+                cmd_result = self.run("%s" % cmd, ignore_status=True)
+                output = cmd_result.stdout
+                output += cmd_result.stderr
+                output = output.strip()
+                #search for pattern as Spanish might have special characters
+                if not re.search(lang["cmds"][cmd], output):
+                    self.error("'%s'expected output '%s', but got '%s'" %
+                               (cmd, lang["cmds"][cmd], output))
+
+            if install_package:
+                try:
+                    self.run("microdnf remove %s" % lang["pkg"])
+                except:
+                    self.error("Could not remove %s" % lang["pkg"])
+
 
     def _prepare_compiler_test_directory(self):
 
