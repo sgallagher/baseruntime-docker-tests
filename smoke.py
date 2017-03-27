@@ -104,6 +104,29 @@ class BaseRuntimeSmokeTest(module_framework.AvocadoTest):
             cmd_output = cmd_result.stdout + cmd_result.stderr
             self._check_cmd_result(cmd, cmd_result.exit_status, cmd_output, expect_pass=False)
 
+    def testOsRelease(self):
+        """
+        Check if OS release information is correct
+        """
+
+        test_path = "resources/os_release/os_release.sh"
+        dest_path = "/tmp/os_release.sh"
+        try:
+            self.copyTo(test_path, dest_path)
+        except:
+            self.error("Could not copy test file from %s to module %s" %
+                       (test_path, dest_path))
+
+        try:
+            self.run(dest_path)
+        except:
+            self.error("%s failed" % dest_path)
+
+        try:
+            self.run("rm -f %s" % dest_path)
+        except:
+            self.error("Could not delete %s" % dest_path)
+
     def test_glibc_i18n(self):
         """
         Test glibc support to internationalization
