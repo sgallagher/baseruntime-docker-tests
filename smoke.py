@@ -67,6 +67,71 @@ class BaseRuntimeSmokeTest(module_framework.AvocadoTest):
             self._check_cmd_result(cmd, cmd_result.exit_status, cmd_output, expect_pass=False)
 
 
+    def _get_all_installed_pkgs(self):
+        try:
+            cmd_result = self.run("rpm -qa --qf='%{name}\n'")
+        except:
+            self.error("Could not get all installed packages")
+        output_list = cmd_result.stdout.split("\n")
+        #remove empty string from the list
+        return [item for item in output_list if item]
+
+    def testRequiredPackages(self):
+        """
+        Check if all required packages defined on yaml file are installed
+        """
+
+        mod_yaml = self.getModulemdYamlconfig()
+        if not mod_yaml:
+            self.error("Could not read modulemd Yaml file")
+
+        if "data" not in mod_yaml.keys():
+            self.error("'data' key was not found in modulemd Yaml file")
+
+        if "profiles" not in mod_yaml["data"].keys():
+            self.error("'profiles' key was not found in 'data' section")
+
+        if "baseimage" not in mod_yaml["data"]["profiles"].keys():
+            self.error("'baseimage' key was not found in 'profiles' section")
+
+        base_profile = mod_yaml["data"]["profiles"]["baseimage"]
+        if "rpms" not in base_profile.keys():
+            self.error("'rpms' key was not found in 'baseimage' profile")
+
+        req_pkgs = base_profile["rpms"]
+        if not req_pkgs:
+            self.error("No rpm is defined for baseimage")
+
+        installed_pkgs = self._get_all_installed_pkgs()
+
+        for req_pkg in req_pkgs:
+            if req_pkg not in installed_pkgs:
+                self.error("Required package '%s' is not installed" % req_pkg)
+
+    def testInstalledPackages(self):
+        """
+        Check if only the expected packages are installed on module
+        """
+
+        expected_pkgs = None
+        all_installed_pkgs_path = "resources/installed_packages/all_installed_pkgs.txt"
+        try:
+            with open(all_installed_pkgs_path) as f:
+                expected_pkgs = f.read().splitlines()
+        except:
+            self.error("Could not read the expected installed packages list")
+
+        if not expected_pkgs:
+            self.error("List of expected installed packages is empty")
+
+        installed_pkgs = self._get_all_installed_pkgs()
+        if not installed_pkgs:
+            self.error("It seems there is no package installed in the module")
+
+        for pkg in installed_pkgs:
+            if pkg not in expected_pkgs:
+                self.error("Did not expect to have package '%s' installed" % pkg)
+
     def testUserManipulation(self):
         """
         Check if can add, remove and modify user
