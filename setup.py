@@ -9,30 +9,85 @@ import tempfile
 
 from avocado import main
 from avocado import Test
+from moduleframework import module_framework
 
 import cleanup
 import brtconfig
 
 
-class BaseRuntimeSetupDocker(Test):
+class BaseRuntimeSetupDocker(module_framework.CommonFunctions, Test):
 
     def setUp(self):
 
-        mockcfg = brtconfig.get_mockcfg(self)
-        self.mockcfg = mockcfg
+        self.mockcfg = brtconfig.get_mockcfg(self)
+        self.br_image_name = brtconfig.get_docker_image_name(self)
+
+    def _process_mockcfg(self):
+
+        mockcfg = self.mockcfg
 
         mock_root = ''
+        mockcfg_lines = []
+        #Regex to get packages that are configured on mockcfg to be installed
+        chroot_setup_pkg_regex = re.compile("config_opts\s*\[\s*'chroot_setup_cmd'\s*\]\s*="
+                                            "\s*'install --setopt=tsflags=nodocs\s*(.*)\s*'")
+        chroot_setup_pkgs = None
         with open(mockcfg, 'r') as mock_cfgfile:
+            found_setup_cmd = False
             for line in mock_cfgfile:
+                mockcfg_lines.append(line)
                 if re.match("config_opts\s*\[\s*'root'\s*\]", line) is not None:
                     mock_root = line.split('=')[1].split("'")[1]
+                if re.match("config_opts\s*\[\s*'chroot_setup_cmd'\s*\]", line) is not None:
+                    found_setup_cmd = True
+                    #Check if there are packages defined on chroot_setup_cmd
+                    m = chroot_setup_pkg_regex.match(line)
+                    if m:
+                        chroot_setup_pkgs = sorted(m.group(1).split())
         if len(mock_root) == 0:
             self.error("mock configuration file %s does not specify mock root" %
                 mockcfg)
         self.log.info("mock root: %s" % mock_root)
         self.mock_root = mock_root
 
-        self.br_image_name = brtconfig.get_docker_image_name(self)
+        if not found_setup_cmd:
+            self.error("mock configuration file %s does not define chroot_setup_cmd" % mockcfg)
+
+        #Need to get all packages that need to be installed
+        mod_yaml = self.getModulemdYamlconfig()
+        if not mod_yaml:
+            self.error("Could not read modulemd Yaml file")
+
+        if "data" not in mod_yaml.keys():
+            self.error("'data' key was not found in modulemd Yaml file")
+
+        if "profiles" not in mod_yaml["data"].keys():
+            self.error("'profiles' key was not found in 'data' section")
+
+        if "baseimage" not in mod_yaml["data"]["profiles"].keys():
+            self.error("'baseimage' key was not found in 'profiles' section")
+
+        base_profile = mod_yaml["data"]["profiles"]["baseimage"]
+        if "rpms" not in base_profile.keys():
+            self.error("'rpms' key was not found in 'baseimage' profile")
+
+        req_pkgs = base_profile["rpms"]
+        if not req_pkgs:
+            self.error("Could not find any package to be installed in the image")
+
+        #Only update mockcfg if the list of packages changed
+        if cmp(chroot_setup_pkgs, sorted(req_pkgs)):
+            #Need to change chroot_setup_cmd line on mockcfg file
+            setup_cmd = "install --setopt=tsflags=nodocs "
+            setup_cmd += " ".join(req_pkgs)
+            with open(mockcfg, 'w') as mock_cfgfile:
+                for line in mockcfg_lines:
+                    if re.match("config_opts\s*\[\s*'chroot_setup_cmd'\s*\]", line) is not None:
+                        line = "config_opts['chroot_setup_cmd'] = '%s'\n" % setup_cmd
+                    mock_cfgfile.write(line)
+
+            #Test will exit with WARN to inform the config file has changed
+            self.log.warning("List of packages to be installed by mock changed")
 
     def _run_command(self, cmd):
         try:
@@ -94,6 +149,8 @@ class BaseRuntimeSetupDocker(Test):
             'mock -r %s --chroot "mkdir -p -m=755 /etc/pki/rpm-gpg"' % self.mockcfg)
 
     def testCreateDockerImage(self):
+
+        self._process_mockcfg()
 
         # Clean-up any old test artifacts (docker containers, image, mock root)
         # first:
