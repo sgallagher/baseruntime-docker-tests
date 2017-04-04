@@ -150,10 +150,10 @@ class BaseRuntimeSmokeTest(module_framework.AvocadoTest):
         }
 
         lang_spanish = {
-            "LC_ALL=es_ES ls /invalid_path" : "ls: no se puede acceder a '/invalid_path': No existe el fichero o el directorio",
-            "LC_ALL=es_ES cp invalid_file tmp" : "cp: no se puede efectuar `stat' sobre 'invalid_file': No existe el fichero o el directorio",
+            "LC_ALL=es_ES ls /invalid_path" : "ls: cannot access '/invalid_path': No existe el fichero o el directorio",
+            "LC_ALL=es_ES cp invalid_file tmp" : "cp: cannot stat 'invalid_file': No existe el fichero o el directorio",
             "LC_ALL=es_ES date -u -d \"2017-03-31\"" : "vie mar 31 00:00:00 UTC 2017",
-            "touch file; yes | LC_ALL=es_ES rm -i file" : "borrar el fichero regular",
+            "touch file; yes | LC_ALL=es_ES rm -i file" : "rm: remove regular empty file 'file'?",
             "LC_ALL=es_ES numfmt --grouping 1234567890,98" : "1.234.567.890,98"
         }
 
