@@ -4,6 +4,7 @@ get configuration parameters for base runtime smoke testing
 
 import os
 import logging
+from moduleframework import module_framework
 
 
 def get_mockcfg(self):
@@ -62,14 +63,14 @@ def get_compiler_test_dir(self):
 def get_docker_image_name(self):
     """
     Get the name to use for the base runtime docker image
-
-    This is provided by the avocado 'docker-image-name' parameter if supplied,
-    otherwise it is set to "base-runtime-smoke".
     """
 
-    image_name = self.params.get(
-        'docker-image-name', default='base-runtime-smoke')
-    image_name = str(image_name)
+    container_helper = module_framework.ContainerHelper()
+    #It tries to get the name from URL env variable
+    #If URL is not defined it tries to get the name from config.yaml
+    image_name = container_helper.getDockerInstanceName()
+    if not image_name:
+        self.error("Could not find docker image name to use")
 
     self.log.info("base runtime image name: %s" % image_name)
 

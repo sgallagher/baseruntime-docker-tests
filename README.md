@@ -71,6 +71,17 @@ Run each of the phases in sequence. e.g.,
 
 In the future, additional test scripts can be run between the setup and teardown.
 
+### Setting docker image name parameter
+
+All of the scripts need to know the name to use for the base-runtime docker image. The scripts will use modularity test framework to get the image name.
+There are 2 options to set the image name. The first is to define it on config.yaml file. The second one is to set URL env variable, this will override the name from the config file.
+* Example:
+
+        $ export URL="docker=base-runtime-smoke"
+        $ avocado run ./setup.py
+        $ avocado run ./smoke.py
+        $ avocado run ./teardown.py
+
 ## Test script configuration overrides
 
 Optional test script configuration overrides can provided on the command line using [avocado's parameter passing mechanism](http://avocado-framework.readthedocs.io/en/latest/WritingTests.html#accessing-test-parameters) in the following manner:
@@ -85,6 +96,3 @@ The setup.py and teardown.py scripts need to read a base-runtime mock configurat
 
 The smoke.py script needs to access a base-runtime compiler test resource directory. The default path is 'resources/hello-world' relative to the directory where the test script resides. This path can be overridden with the 'compiler-test-dir' parameter.
 
-### docker-image-name - path to mock configuration file
-
-All of the scripts need to know the name to use for the base-runtime docker image. The default name is 'base-runtime-smoke'. This name can be overridden with the 'docker-image-name' parameter.

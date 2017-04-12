@@ -22,7 +22,6 @@ class BaseRuntimeSmokeTest(module_framework.AvocadoTest):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.compiler_resource_dir = brtconfig.get_compiler_test_dir(self)
-        self.br_image_name = brtconfig.get_docker_image_name(self)
         self.compiler_test_dir = None
 
     def _check_cmd_result(self, cmd, return_code, cmd_output, expect_pass=True):
