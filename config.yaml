@@ -6,8 +6,6 @@ service:
     port:
 packages:
     rpms:
-        - bash
-        - coreutils
 default_module: docker
 module:
     docker:
