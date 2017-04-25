@@ -5,6 +5,8 @@ modulemd-url: http://pkgs.fedoraproject.org/cgit/modules/base-runtime.git/plain/
 service:
     port:
 packages:
+    profiles:
+        - baseimage
     rpms:
 default_module: docker
 module:

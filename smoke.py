@@ -113,7 +113,12 @@ class BaseRuntimeSmokeTest(module_framework.AvocadoTest):
         """
 
         expected_pkgs = None
-        all_installed_pkgs_path = "resources/installed_packages/all_installed_pkgs.txt"
+
+        if not self.moduleType:
+            self.error("moduleType is not defined")
+
+        all_installed_pkgs_path = ("resources/installed_packages/all_installed_pkgs_%s.txt"
+                                   % self.moduleType)
         try:
             with open(all_installed_pkgs_path) as f:
                 expected_pkgs = f.read().splitlines()
