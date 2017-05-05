@@ -14,8 +14,15 @@ module:
         setup: docker inspect base-runtime-smoke || python ./setup.py
         start:
         labels:
-            description: "I dont know"
-            io.k8s.description: "I dont know too"
+            #Short-term solution as there is no bugzilla component yet
+            com.redhat.component: "https://github.com/fedora-modularity/base-runtime"
+            name: "base-runtime"
+            version: "0"
+            release: "1"
+            architecture: "x86_64"
+            usage: "docker run --rm -it base-runtime/base-runtime bash"
+            summary: "Minimal application runtime environment other modules can build upon."
+            url: "https://github.com/fedora-modularity/base-runtime"
         source: http://pkgs.fedoraproject.org/cgit/modules/base-runtime.git
         container: docker=base-runtime-smoke
     rpm:

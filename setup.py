@@ -187,9 +187,25 @@ class BaseRuntimeSetupDocker(Test, module_framework.CommonFunctions):
             # "sudo" works, so use it
             tar_cmd = "sudo -n " + tar_cmd
 
+        img_scratch = "%s-scratch" % self.br_image_name
         # Import mock chroot as a docker image
         self._run_command("%s | docker import - %s" %
-                          (tar_cmd, self.br_image_name))
+                          (tar_cmd, img_scratch))
+
+        docker_labels = brtconfig.get_docker_labels(self)
+        #Dockerfile to use when building final image
+        dockerfile = 'EOF\n'
+        dockerfile += 'FROM %s\n' % img_scratch
+        if docker_labels:
+            for key in docker_labels.keys():
+                dockerfile += 'LABEL %s="%s"\n' % (key, docker_labels[key])
+        dockerfile += 'EOF\n'
+
+        # Build final image with extra information from dockerfile
+        self._run_command("docker build -t %s - << %s" %
+                          (self.br_image_name, dockerfile))
+        #Remove temporary image
+        self._run_command("docker rmi %s" % img_scratch)
 
 if __name__ == "__main__":
     main()

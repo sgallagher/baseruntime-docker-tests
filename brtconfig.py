@@ -75,3 +75,21 @@ def get_docker_image_name(self):
     self.log.info("base runtime image name: %s" % image_name)
 
     return image_name
+
+def get_docker_labels(self):
+    """
+    From config file get the labels that should be added to the image
+    """
+
+    config = module_framework.get_correct_config()
+    if not config:
+        self.error("Could not get config file")
+    if 'module' not in config.keys():
+        self.error("Config file does not have module section")
+    if 'docker' not in config['module'].keys():
+        self.error("Config file does not have docker module section")
+
+    docker_cfg = config['module']['docker']
+    if 'labels' not in docker_cfg.keys():
+        return None
+    return docker_cfg['labels']
