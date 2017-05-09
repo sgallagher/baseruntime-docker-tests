@@ -23,6 +23,7 @@ module:
             usage: "docker run --rm -it base-runtime/base-runtime bash"
             summary: "Minimal application runtime environment other modules can build upon."
             url: "https://github.com/fedora-modularity/base-runtime"
+            FGC: "f26-boltron"
         source: http://pkgs.fedoraproject.org/cgit/modules/base-runtime.git
         container: docker=base-runtime-smoke
     rpm:
