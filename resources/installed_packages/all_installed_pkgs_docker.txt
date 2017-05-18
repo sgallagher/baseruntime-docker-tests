@@ -62,6 +62,8 @@ libsigsegv
 libsmartcols
 libsolv
 libssh2
+libsss_idmap
+libsss_nss_idmap
 libtasn1
 libunistring
 libutempter
@@ -103,6 +105,7 @@ sed
 setup
 shadow-utils
 sqlite-libs
+sssd-client
 systemd-libs
 tzdata
 ustr
